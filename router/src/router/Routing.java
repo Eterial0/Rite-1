@@ -267,11 +267,12 @@ public class Routing {
             //  You also need to get the sending neigbour and reflood the packet to all other neighbors
             //      decrementing TTL
             // ...
-           /* if(mcast == false){ //Unicast flooding
-                
+            if(mcast == false){ //Unicast flooding
+                TTL = TTL - 1;
+                if(TTL >= 1) send_local_ROUTE(false);
+    
+            }
             
-            
-            }*/
             // When "Send If Changes" is on:
             //  You need to compare the vector with the previously received one (if valid),
             //      and call network_changed if they differ
@@ -311,46 +312,36 @@ public class Routing {
         return rtab;
     }
     
-    /*
-     *  Sees if node node exists in the local vector of origin node
-     * 
-     * 
-    */
-    public boolean NodeExists(Entry node){
-        
-        boolean ok = false;
-        
-        for(Entry vector1 : neig.local_vec(true)){
-               
-              if(node.dest == vector1.dest) ok = true;
 
-        }
-        
-        return ok;
-    }
-  
+      /**
+     * Get the 
+     *@param tab routing table of node 
+     * @param origin origin node
+     * @param Prevdist previous distance
+     * @return the shortest path
+     */
 
     public RouteEntry SmallestRoute(RoutingTable tab,char origin, int Prevdist){
         
-        RouteEntry route1, route = null;
+        RouteEntry route1, route = null; 
         char nextN;
         int min = 100000000;
-        int cont=0;
+        int cont = 0;
  
         RouterInfo neighbours = map.get(origin);
         if(neighbours != null){
             for(Entry vector1 : neighbours.vec){
         
                 cont = vector1.dist + Prevdist;         
-                route1 = tab.get_RouteEntry(vector1.dest);
+                route1 = tab.get_RouteEntry(vector1.dest); //One of the next routes of origin node
                 if(route1 != null ){
-                    if(cont < min && route1.is_final() == false && cont <= Router.MAX_DISTANCE){
+                    if(cont < min && route1.is_final() == false && cont <= Router.MAX_DISTANCE){ 
+                        /*test if route1 is a tentative*/
                         min = cont;
                         nextN = vector1.dest;
                         route = new RouteEntry(nextN,origin,min);
-
-                     }
-                }
+                    }
+                } 
                 else{
                      if(cont < min && cont <= Router.MAX_DISTANCE){
                         min = cont;
@@ -364,7 +355,7 @@ public class Routing {
             return route; 
         }
         else 
-            return null;
+            return null; //if node origin doesn't have neighbours return null
     }
     
    
@@ -383,32 +374,23 @@ public class Routing {
      * @return the routing table calculated
      */
     public RoutingTable run_dijkstra(char origin) {
-        char nextN = origin;
+        char nextN = origin; // nextN is the next node to be chosen 
         RouteEntry re;
         RoutingTable tab= new RoutingTable();
         int Prevdist = 0;
-        boolean tentatives = true;
+        boolean tentatives = true; //responsible for verifying if exists more tentative nodes or not
      
-        int min = 1000000, total = 0;
+        int min = 1000000, total = 0;// min =>shortest distance to node origin, total => min + previous distance
        
         // Create route entry with local node
         re= new RouteEntry(origin, ' ', 0);
         re.set_final();     // Set the local node final
         tab.add_route(re); // Add the route entry to the routing table
         
-        // Implement the Dijkstra algorithm here
-        // Read carefully the pages 366-369 of Computer Networks 5th edition
-        // to understand how it is done
-        // Remember that there is a maximum distance allowed!
-        // ...
-  
-        
         for(Entry vector : neig.local_vec(true)){
                 if(tab.get_RouteEntry(vector.dest)==null){
-                   
                     re = new RouteEntry(vector.dest,vector.dest,vector.dist);
                     tab.add_route(re);
-                
                 }
                 total = vector.dist + Prevdist;         
                 if(total != 0){
@@ -421,30 +403,15 @@ public class Routing {
         }
      
         if(total!=0){
-            //re = new RouteEntry(nextN,origin,min);
             re = tab.get_RouteEntry(nextN);
             re.set_final();
-            //tab.add_route(re);
             origin = nextN;
             Prevdist = min;
         }
-        else{
-            
-            return tab;
-        
-        } 
-        
-        
-        
-        
+        else return tab;
+     
         while(tentatives == true){   
 
-             /*  for(Entry en1 : tab.get_Entry_vector()){
-
-                    if(!NodeExists(en1)) tab.removeRoute(en1.dest);
-
-                }*/
-              
                 re = SmallestRoute(tab,origin,Prevdist);
                
                 if(re != null){ 
@@ -467,11 +434,9 @@ public class Routing {
                         }    
                    }
                 } 
-                else{
-                   return tab;
-                }
-
-               
+                else  return tab;
+                
+                
                tentatives = false;
                RouterInfo ro = map.get(origin);
                if(ro!=null){
@@ -494,18 +459,7 @@ public class Routing {
                }
                
         }
-        
-        
         return tab; // Return the table   
-           
-      
-                
-
-        
-        // Max_Distance=30
-        
-        
-        
     }
 
     /*******************************
@@ -524,7 +478,7 @@ public class Routing {
             return false;
         }
 
-        win.Log("send_local_ROUTE(multicast only)\n");
+       // win.Log("send_local_ROUTE(multicast only)\n");
 
         //
         Entry[] vec = local_vec();
@@ -537,19 +491,19 @@ public class Routing {
         try {
             // WARNING: always use multicast
             // Place here the code to send unicast if (!use_multicast)
-           /* if(!use_multicast){
-               ds.send(dp);
-                
+            if(!use_multicast){
+               ds.send(dp);       
                return true; 
             }
-            else{*/
+            else{
+                
                 mdaemon.send_packet(dp);
 
                 lastSending = new Date();
                 win.ROUTE_snt++;
                 win.ROUTE_loc++;
                 return true;
-            //}    
+            }    
         } catch (IOException e) {
             win.Log("Error sending ROUTE: " + e + "\n");
             return false;
